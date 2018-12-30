@@ -1293,6 +1293,7 @@ const uint8_t *noise_pattern_lookup(int id)
     case NOISE_PATTERN_KX_NOIDH_HFS:    return noise_pattern_KXnoidh_hfs;
     case NOISE_PATTERN_IK_NOIDH_HFS:    return noise_pattern_IKnoidh_hfs;
     case NOISE_PATTERN_IX_NOIDH_HFS:    return noise_pattern_IXnoidh_hfs;
+    case NOISE_PATTERN_XK_NTCP2:        return noise_pattern_XK;
     default:                            return 0;
     }
 }

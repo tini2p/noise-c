@@ -95,6 +95,7 @@ extern "C" {
 #define NOISE_PATTERN_KX_NOIDH_HFS      NOISE_ID('P', 82)
 #define NOISE_PATTERN_IK_NOIDH_HFS      NOISE_ID('P', 83)
 #define NOISE_PATTERN_IX_NOIDH_HFS      NOISE_ID('P', 84)
+#define NOISE_PATTERN_XK_NTCP2          NOISE_ID('P', 85)
 
 /* Protocol name prefixes */
 #define NOISE_PREFIX_NONE               0

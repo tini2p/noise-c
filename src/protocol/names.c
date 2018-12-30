@@ -110,6 +110,7 @@ static NoiseIdMapping const algorithm_names[] = {
     {NOISE_PATTERN_KX_NOIDH_HFS,"KXnoidh+hfs",  11},
     {NOISE_PATTERN_IK_NOIDH_HFS,"IKnoidh+hfs",  11},
     {NOISE_PATTERN_IX_NOIDH_HFS,"IXnoidh+hfs",  11},
+    {NOISE_PATTERN_XK_NTCP2,    "XKaesobfse+hs2+hs3", 18},
 
     /* Protocol name prefixes */
     {NOISE_PREFIX_STANDARD,     "Noise",         5},

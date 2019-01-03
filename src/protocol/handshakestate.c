@@ -1779,4 +1779,23 @@ int noise_handshakestate_get_handshake_hash
     return NOISE_ERROR_NONE;
 }
 
+/**
+ * \brief Mixes new input data into the handshake hash.
+ *
+ * \param state The SymmetricState object.
+ * \param input Points to the input data to mix in.
+ * \param size The size of the \a input data in bytes.
+ *
+ * \return NOISE_ERROR_NONE on success.
+ * \return NOISE_ERROR_INVALID_PARAM if \a state or \a input is NULL.
+ * \return NOISE_ERROR_INVALID_STATE if the \a state has already been split.
+ *
+ * \sa noise_symmetricstate_mix_key(), noise_symmetricstate_split()
+ */
+int noise_handshakestate_mix_hash
+    (const NoiseHandshakeState *state, const uint8_t *hash, size_t size)
+{
+  noise_symmetricstate_mix_hash(state->symmetric, hash, size);
+}
+
 /**@}*/

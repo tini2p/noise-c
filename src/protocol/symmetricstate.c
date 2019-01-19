@@ -572,4 +572,101 @@ int noise_symmetricstate_split
     return NOISE_ERROR_NONE;
 }
 
+/**
+ * \brief Splits the transport encryption CipherState objects out of
+ * this SymmetricState object, saves the HKDF temp key.
+ *
+ * \param state The SymmetricState object.
+ * \param c1 Points to the variable where to place the pointer to the
+ * first CipherState object.  This can be NULL if the application is
+ * using a one-way handshake pattern.
+ * \param c2 Points to the variable where to place the pointer to the
+ * second CipherState object.  This can be NULL if the application is
+ * using a one-way handshake pattern.
+ * \param temp Points to the buffer for the HKDF temp key
+ * \param temp_len Length of the buffer for the HKDF temp key
+ *
+ * \return NOISE_ERROR_NONE on success.
+ * \return NOISE_ERROR_INVALID_PARAM if \a state is NULL.
+ * \return NOISE_ERROR_INVALID_PARAM if both \a c1 and \a c2 are NULL.
+ * \return NOISE_ERROR_INVALID_STATE if the \a state has already been split.
+ * \return NOISE_ERROR_NO_MEMORY if there is insufficient memory to create
+ * the new CipherState objects.
+ *
+ * Once a SymmetricState has been split, it is effectively finished and
+ * cannot be used for future encryption or hashing operations.
+ * If those operations are invoked, the relevant functions will return
+ * NOISE_ERROR_INVALID_STATE.
+ *
+ * The \a c1 object should be used to protect messages from the initiator to
+ * the responder, and the \a c2 object should be used to protect messages
+ * from the responder to the initiator.
+ *
+ * If the handshake pattern is one-way, then the application should call
+ * noise_cipherstate_free() on the object that is not needed.  Alternatively,
+ * the application can pass NULL to noise_symmetricstate_split() as the
+ * \a c1 or \a c2 argument and the second CipherState will not be created
+ * at all.
+ */
+int noise_symmetricstate_split_save
+    (NoiseSymmetricState *state, NoiseCipherState **c1, NoiseCipherState **c2, uint8_t *temp, size_t temp_len)
+{
+    uint8_t temp_k1[NOISE_MAX_HASHLEN];
+    uint8_t temp_k2[NOISE_MAX_HASHLEN];
+    size_t hash_len;
+    size_t key_len;
+
+    /* Validate the parameters */
+    if (!state)
+        return NOISE_ERROR_INVALID_PARAM;
+    if (!c1 && !c2)
+        return NOISE_ERROR_INVALID_PARAM;
+    if (c1)
+        *c1 = 0;
+    if (c2)
+        *c2 = 0;
+
+    /* If the state has already been split, then we cannot split again */
+    if (!state->cipher)
+        return NOISE_ERROR_INVALID_STATE;
+
+    /* Generate the two encryption keys with HKDF */
+    hash_len = noise_hashstate_get_hash_length(state->hash);
+    key_len = noise_cipherstate_get_key_length(state->cipher);
+    noise_hashstate_hkdf_save
+        (state->hash, state->ck, hash_len, state->ck, 0,
+         temp_k1, key_len, temp_k2, key_len, temp, temp_len);
+
+    /* If we only need c2, then re-initialize the key in the internal
+       cipher and copy it to c2 */
+    if (!c1 && c2) {
+        noise_cipherstate_init_key(state->cipher, temp_k2, key_len);
+        *c2 = state->cipher;
+        state->cipher = 0;
+        noise_clean(temp_k1, sizeof(temp_k1));
+        noise_clean(temp_k2, sizeof(temp_k2));
+        return NOISE_ERROR_NONE;
+    }
+
+    /* Split a copy out of the cipher and give it the second key.
+       We don't need to do this if the second CipherSuite is not required */
+    if (c2) {
+        *c2 = (*(state->cipher->create))();
+        if (!(*c2)) {
+            noise_clean(temp_k1, sizeof(temp_k1));
+            noise_clean(temp_k2, sizeof(temp_k2));
+            return NOISE_ERROR_NO_MEMORY;
+        }
+        noise_cipherstate_init_key(*c2, temp_k2, key_len);
+    }
+
+    /* Re-initialize the key in the internal cipher and copy it to c1 */
+    noise_cipherstate_init_key(state->cipher, temp_k1, key_len);
+    *c1 = state->cipher;
+    state->cipher = 0;
+    noise_clean(temp_k1, sizeof(temp_k1));
+    noise_clean(temp_k2, sizeof(temp_k2));
+    return NOISE_ERROR_NONE;
+}
+
 /**@}*/

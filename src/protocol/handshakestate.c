@@ -1728,6 +1728,79 @@ int noise_handshakestate_split
 }
 
 /**
+ * \brief Splits the transport encryption CipherState objects out of
+ * this HandshakeState object, saves the HKDF temp key for NTCP2 SipHash KDF.
+ *
+ * \param state The HandshakeState object.
+ * \param send Points to the variable where to place the pointer to the
+ * CipherState object to use to send packets from local to remote.
+ * This can be NULL if the application is using a one-way handshake pattern.
+ * \param receive Points to the variable where to place the pointer to the
+ * CipherState object to use to receive packets from the remote to local.
+ * This can be NULL if the application is using a one-way handshake pattern.
+ * \param temp Points to the buffer for the HKDF temp key
+ * \param temp_len Length of the buffer for the HKDF temp key
+ *
+ * \return NOISE_ERROR_NONE on success.
+ * \return NOISE_ERROR_INVALID_PARAM if \a state is NULL.
+ * \return NOISE_ERROR_INVALID_PARAM if both \a send and \a receive are NULL.
+ * \return NOISE_ERROR_INVALID_STATE if the \a state has already been split
+ * or the handshake protocol has not completed successfully yet.
+ * \return NOISE_ERROR_NO_MEMORY if there is insufficient memory to create
+ * the new CipherState objects.
+ *
+ * Once a HandshakeState has been split, it is effectively finished and
+ * cannot be used for future handshake operations.  If those operations are
+ * invoked, the relevant functions will return NOISE_ERROR_INVALID_STATE.
+ *
+ * The \a send object should be used to protect messages from the local
+ * side to the remote side, and the \a receive object should be used to
+ * protect messages from the remote side to the local side.
+ *
+ * If the handshake pattern is one-way, then the application should call
+ * noise_cipherstate_free() on the object that is not needed.  Alternatively,
+ * the application can pass NULL to noise_handshakestate_split() as the
+ * \a send or \a receive argument and the second CipherState will not be
+ * created at all.
+ *
+ * \sa noise_handshakestate_get_handshake_hash()
+ */
+int noise_handshakestate_split_save(
+    NoiseHandshakeState* state,
+    NoiseCipherState** send,
+    NoiseCipherState** receive,
+    uint8_t* temp,
+    size_t temp_len)
+{
+    int swap;
+    int err;
+
+    /* Validate the parameters */
+    if (!state)
+        return NOISE_ERROR_INVALID_PARAM;
+    if (!send && !receive)
+        return NOISE_ERROR_INVALID_PARAM;
+    if (state->action != NOISE_ACTION_SPLIT)
+        return NOISE_ERROR_INVALID_STATE;
+    if (!state->symmetric->cipher)
+        return NOISE_ERROR_INVALID_STATE;
+
+    /* Do we need to swap the CipherState objects for the role? */
+    swap = (state->role == NOISE_ROLE_RESPONDER);
+
+    /* Split the CipherState objects out of the SymmetricState */
+    if (swap)
+      err = noise_symmetricstate_split_save(
+          state->symmetric, receive, send, temp, temp_len);
+    else
+      err = noise_symmetricstate_split_save(
+          state->symmetric, send, receive, temp, temp_len);
+    if (err == NOISE_ERROR_NONE)
+        state->action = NOISE_ACTION_COMPLETE;
+    return err;
+}
+
+/**
  * \brief Gets the handshake hash value once the handshake ends.
  *
  * \param state The HandshakeState object.
@@ -1795,7 +1868,7 @@ int noise_handshakestate_get_handshake_hash
 int noise_handshakestate_mix_hash
     (const NoiseHandshakeState *state, const uint8_t *hash, size_t size)
 {
-  noise_symmetricstate_mix_hash(state->symmetric, hash, size);
+  return noise_symmetricstate_mix_hash(state->symmetric, hash, size);
 }
 
 /**@}*/

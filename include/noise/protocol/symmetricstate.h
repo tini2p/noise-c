@@ -50,6 +50,9 @@ int noise_symmetricstate_decrypt_and_hash
 size_t noise_symmetricstate_get_mac_length(const NoiseSymmetricState *state);
 int noise_symmetricstate_split
     (NoiseSymmetricState *state, NoiseCipherState **c1, NoiseCipherState **c2);
+int noise_symmetricstate_split_save
+    (NoiseSymmetricState *state, NoiseCipherState **c1, NoiseCipherState **c2,
+     uint8_t *temp, size_t temp_len);
 
 #ifdef __cplusplus
 };
